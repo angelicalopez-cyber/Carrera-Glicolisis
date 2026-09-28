@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Carrera de la Glucólisis — Travesía 3 Columnas</title>
+<style>
+:root{--ink:#183247;--muted:#60758a;--line:#c9d4dc;--accent:#147ea8;--gain:#168b68;--gold:#d49a18;--bg:#eef2f5;--card:#fff;--bad:#b44b4b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif;overflow-x:hidden}
+.wrap{max-width:1400px;margin:auto;padding:12px}
+button,input{font:inherit}
+.panel{background:#fff;border:1px solid #dbe2e8;border-radius:18px;padding:14px;box-shadow:0 6px 20px rgba(30,50,70,.06)}
+
+/* PANTALLA INICIO */
+#start{max-width:600px;margin:60px auto;text-align:center}
+#start h1{margin-top:0;color:var(--accent);font-size:26px}
+.field{display:flex;gap:8px;margin-top:20px}
+.field input{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:12px;font-size:15px}
+.primary{border:0;border-radius:10px;padding:11px 18px;background:var(--accent);color:#fff;font-weight:800;cursor:pointer;transition:background 0.2s}
+.primary:hover{background:#0f6385}
+.sub{color:var(--muted);font-size:13px;line-height:1.4}
+
+/* JUEGO PRINCIPAL */
+.game{display:none}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;padding:10px 18px;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,0.04);margin-bottom:12px;position:sticky;top:8px;z-index:10}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{background:#f1f5f7;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px}
+.stat b{font-size:16px;color:var(--accent)}
+
+/* LAYOUT EN 3 COLUMNAS */
+.layout-3col{display:grid;grid-template-columns:300px minmax(0,1fr) 280px;gap:12px;align-items:start}
+
+/* COLUMNA IZQUIERDA: PREGUNTAS */
+.q-panel{display:flex;flex-direction:column;gap:10px}
+.q-header{display:flex;align-items:center;gap:8px;border-bottom:1px solid #edf2f7;padding-bottom:8px}
+.q-badge{background:#e3f1f7;color:var(--accent);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0}
+.q-title{font-size:12px;font-weight:800;color:var(--accent);text-transform:uppercase}
+.q-text{font-size:14px;font-weight:800;line-height:1.35;margin:4px 0 8px;color:var(--ink)}
+.choices{display:grid;gap:6px}
+.choice{border:1px solid #d6dee4;background:#f8fafc;border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.15s}
+.choice:hover:not(:disabled){background:#edf4f8;border-color:var(--accent)}
+.choice.ok{background:#e4f6ed;border-color:var(--gain);color:#0d5942}
+.choice.no{background:#fdeeee;border-color:var(--bad);color:#832525}
+.feedback{font-size:12px;font-weight:700;min-height:30px;margin-top:6px;display:flex;align-items:center}
+.bonus-alert{background:#fff8df;border:1px solid var(--gold);color:#8a6200;border-radius:8px;padding:8px;font-size:11px;font-weight:800;display:none;animation:bounce 0.4s}
+@keyframes bounce{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+
+/* COLUMNA CENTRAL: MAPA */
+.board{position:relative;background:#fff;border-radius:18px;padding:12px;text-align:center}
+.mapwrap{overflow:auto;background:radial-gradient(circle, #fbfcfd 0%, #eef3f7 100%);border-radius:14px;padding:6px;border:1px solid #e1e8ed}
+.map{display:block;margin:auto;max-width:100%;height:auto;min-width:620px}
+
+/* ELEMENTOS SVG */
+.thread{fill:none;stroke:#c5cfd6;stroke-width:8;stroke-linecap:round}
+.core{fill:none;stroke:#6da8bc;stroke-width:3;stroke-dasharray:8 8;stroke-linecap:round}
+.pearl{fill:#f8fafb;stroke:#aebbc5;stroke-width:3;transition:all 0.3s}
+.done .pearl{fill:#dff4ea;stroke:var(--gain)}
+.current .pearl{fill:#e3f1f7;stroke:var(--accent);stroke-width:6;animation:pulse 1.8s infinite}
+.meta .pearl{fill:#fff8df;stroke:var(--gold);stroke-width:5}
+@keyframes pulse{0%{r:27}50%{r:32}100%{r:27}}
+
+.node{cursor:pointer}
+.node text{font-weight:800;fill:var(--ink);text-anchor:middle;dominant-baseline:middle;font-size:12px;pointer-events:none}
+.node .small{font-size:9px;font-weight:700;fill:var(--muted)}
+.phase{font-size:11px;font-weight:800;letter-spacing:.5px;fill:var(--muted)}
+.enzyme{font-size:10px;font-weight:700;fill:#5d7180}
+.token{fill:var(--accent);stroke:#fff;stroke-width:3;transition:all 0.5s ease-in-out}
+.tokenText{fill:#fff;font-size:10px;font-weight:900;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
+
+.legend{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:2px solid #aaa;vertical-align:-1px;margin-right:3px}
+
+/* COLUMNA DERECHA: TARJETAS */
+.cards-panel{display:flex;flex-direction:column;gap:8px;max-height:780px;overflow-y:auto}
+.cards-panel h3{margin:0 0 4px 0;font-size:14px;color:var(--ink)}
+.cardBtn{border:1px dashed #aebbc5;background:#f9fbfd;border-radius:10px;padding:9px;text-align:left;cursor:pointer;transition:all 0.2s}
+.cardBtn:hover:not(:disabled){border-color:var(--accent);background:#f0f7fa}
+.cardBtn:disabled{opacity:.35;cursor:default}
+.cardBtn strong{display:block;font-size:12px;color:var(--ink)}
+.cardBtn span{font-size:10px;color:var(--muted)}
+.selected{border:2px solid var(--accent)!important;background:#eef8fb!important;box-shadow:0 0 6px rgba(20,126,168,0.25)}
+
+/* PANTALLA FINAL */
+.final{display:none;max-width:760px;margin:45px auto;text-align:center}
+.results{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
+.result{background:#f1f6f7;border-radius:14px;padding:15px}
+.result b{display:block;font-size:24px;color:var(--accent)}
+
+@media(max-width:1100px){
+ .layout-3col{grid-template-columns:1fr;gap:15px}
+ .cards-panel{max-height:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- INICIO -->
+<section id="start" class="panel">
+<h1>🧬 Carrera de la Glucólisis</h1>
+<p class="sub">Recorre la vía metabólica en tiempo real. Responde preguntas, libera bonos sorpresa y coloca tarjetas en el mapa para ganar la carrera.</p>
+<div class="field">
+  <input id="name" maxlength="60" placeholder="Nombre del jugador...">
+  <button class="primary" id="startBtn">Comenzar Carrera</button>
+</div>
+</section>
+
+<!-- JUEGO -->
+<section id="game" class="game">
+<div class="top">
+  <div>
+    <h1 style="margin:0;font-size:18px;color:var(--accent)">CARRERA DE LA GLUCÓLISIS</h1>
+    <div class="sub" id="student" style="font-weight:bold;font-size:12px"></div>
+  </div>
+  <div class="stats">
+    <div class="stat">⏱️ <b id="time">00:00</b></div>
+    <div class="stat">🔮 Perlas <b id="pearls">0</b></div>
+    <div class="stat">⚡ ATP neto <b id="atp">0</b></div>
+    <div class="stat">🧪 NADH <b id="nadh">0</b></div>
+  </div>
+</div>
+
+<div class="layout-3col">
+  
+  <!-- COLUMNA 1: PREGUNTAS EN VIVO -->
+  <aside class="panel q-panel">
+    <div class="q-header">
+      <div class="q-badge" id="qNum">1</div>
+      <div>
+        <div class="q-title">Pregunta Activa</div>
+        <div style="font-size:10px;color:var(--muted)" id="qCount">Desafío metabólico</div>
+      </div>
+    </div>
+    <div class="q-text" id="question">Cargando pregunta...</div>
+    <div class="choices" id="choices"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="bonus-alert" id="bonusAlert"></div>
+    <button class="primary" id="nextQBtn" style="display:none;width:100%;margin-top:6px">Siguiente Pregunta ➔</button>
+  </aside>
+
+  <!-- COLUMNA 2: MAPA CENTRAL LIBRE -->
+  <main class="panel board">
+    <div class="mapwrap">
+      <svg class="map" viewBox="0 0 760 940" aria-label="Mapa de glucólisis">
+        <path class="thread" d="M380 82 V330"/>
+        <path class="core" d="M380 82 V330"/>
+        <path class="thread" d="M380 330 C300 380 210 390 210 455 V820"/>
+        <path class="core" d="M380 330 C300 380 210 390 210 820"/>
+        <path class="thread" d="M380 330 C460 380 550 390 550 455 V820"/>
+        <path class="core" d="M380 330 C460 380 550 390 550 820"/>
+        <text class="phase" x="380" y="35" text-anchor="middle">FASE DE INVERSIÓN · SE INVIERTEN 2 ATP</text>
+        <text class="phase" x="380" y="365" text-anchor="middle">FASE DE GANANCIA · LA RUTA OCURRE 2×</text>
+        <g id="nodes"></g>
+        <g id="enzymes"></g>
+        <g id="token"></g>
+      </svg>
+    </div>
+
+    <div class="legend">
+      <span><i class="dot" style="background:#f8fafb"></i>Pendiente</span>
+      <span><i class="dot" style="background:#dff4ea;border-color:#168b68"></i>Completada</span>
+      <span><i class="dot" style="background:#e3f1f7;border-color:#147ea8"></i>TÚ</span>
+      <span><i class="dot" style="background:#fff8df;border-color:#d49a18"></i>Meta</span>
+    </div>
+  </main>
+
+  <!-- COLUMNA 3: TARJETAS DE CONSTRUCCIÓN -->
+  <aside class="panel cards-panel">
+    <h3>🧬 Tarjetas a Colocar</h3>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px">Selecciona una tarjeta y luego presiona la estación del mapa.</div>
+    <div id="cards" style="display:grid;gap:6px"></div>
+    <button class="primary" id="finishBtn" type="button" style="display:none;margin-top:10px;width:100%">🏁 Terminar Carrera</button>
+  </aside>
+
+</div>
+</section>
+
+<!-- PANTALLA FINAL -->
+<section id="final" class="final panel">
+  <h1>🏁 ¡Carrera Terminada!</h1>
+  <p id="finalStudent" style="font-size:16px;font-weight:bold;color:var(--accent)"></p>
+  <div class="results">
+    <div class="result">Tiempo<b id="finalTime">00:00</b></div>
+    <div class="result">Perlas<b id="finalPearls">0</b></div>
+    <div class="result">Aciertos<b id="finalCorrect">0</b></div>
+    <div class="result">Bonos Obtenidos<b id="finalBonus">0</b></div>
+    <div class="result">ATP Neto<b>2</b></div>
+    <div class="result">NADH<b>2</b></div>
+  </div>
+  <button class="primary" id="restart" style="margin-top:10px">Jugar de nuevo</button>
+</section>
+
+</div>
+
+<script>
+const qs=[
+["¿Dónde ocurre la glucólisis?",["En el núcleo","En el citosol","En el lisosoma","En el aparato de Golgi"],1],
+["¿La glucólisis requiere oxígeno de manera directa?",["Sí","No","Solo al final","Solo durante la inversión"],1],
+["¿Cuál es el sustrato inicial y cuántos carbonos tiene?",["Glucosa, 6 C","Piruvato, 3 C","G3P, 3 C","Lactato, 3 C"],0],
+["¿Qué ocurre durante la fase de inversión?",["Se producen 4 ATP","Se invierten 2 ATP","Se producen 2 NADH","Se forman 2 piruvatos"],1],
+["¿Qué hace la hexocinasa con la glucosa?",["La oxida directamente","Añade un fosfato y ayuda a atraparla en la célula","La divide en dos triosas","La convierte en piruvato"],1],
+["¿Qué enzima participa en la ruptura de la fructosa-1,6-bisfosfato?",["Aldolasa","Hexocinasa","Piruvato cinasa","GAPDH"],0],
+["¿Qué sucede con el NAD+ durante la glucólisis?",["Se convierte en ATP","Acepta electrones y se convierte en NADH","Se convierte en glucosa","Se consume como enzima"],1],
+["Después de la ruptura, ¿qué molécula debe convertirse para continuar por la misma ruta?",["G3P","DHAP","Piruvato","F6P"],1],
+["¿Cuánto ATP se produce en bruto durante la fase de ganancia?",["2","4","6","8"],1],
+["¿Cuál es la ganancia neta de ATP por glucosa?",["1","2","4","6"],1],
+["¿Cuáles son los productos finales de la glucólisis?",["2 piruvatos + 2 ATP netos + 2 NADH","1 piruvato + 4 ATP + 1 NADH","2 lactatos + 2 ATP","2 acetil-CoA + 2 ATP"],0],
+["Con oxígeno disponible, ¿qué ocurre después con el piruvato?",["Se queda en el citosol necesariamente","Continúa hacia la oxidación mitocondrial","Se convierte obligatoriamente en glucosa","Se elimina de inmediato"],1],
+["¿Qué enzima cataliza F6P → fructosa-1,6-bisfosfato?",["PFK","Aldolasa","GAPDH","Piruvato cinasa"],0],
+["¿Cuántas moléculas de G3P entran a la fase de ganancia por cada glucosa?",["1","2","3","4"],1],
+["¿Qué coenzima se reduce durante la reacción de GAPDH?",["ATP","NAD+","FAD","CoA"],1],
+["¿Cuántos ATP se forman en bruto por cada molécula de G3P durante la fase de ganancia?",["1","2","3","4"],1]
+];
+
+const cards=[
+["G6P","Molécula","Después de hexocinasa",[1]],
+["F-1,6-BP","Molécula","Antes de la ruptura",[3]],
+["DHAP","Molécula","Primera molécula de una rama tras la ruptura",[5]],
+["G3P","Molécula","Triosa que continúa la vía",[6,12]],
+["1,3-BPG","Molécula","Después de G3P",[7,13]],
+["3-PG","Molécula","Después de 1,3-BPG",[8,14]],
+["2-PG","Molécula","Después de 3-PG",[9,15]],
+["PEP","Molécula","Después de 2-PG",[10,16]],
+["Piruvato","Molécula","Producto final",[11,17]],
+["Hexocinasa","Enzima","Glucosa → G6P",[1]],
+["PFK","Enzima","F6P → F-1,6-BP",[2]],
+["Aldolasa","Enzima","Ruptura",[4]],
+["GAPDH","Enzima","G3P → 1,3-BPG",[6,12]],
+["Fosfoglicerato cinasa","Enzima","1,3-BPG → 3-PG",[7,13]],
+["Fosfoglicerato mutasa","Enzima","3-PG → 2-PG",[8,14]],
+["Enolasa","Enzima","2-PG → PEP",[9,15]],
+["Piruvato cinasa","Enzima","PEP → piruvato",[10,16]]
+];
+
+const labels=[
+["GLUCOSA","6 C"],["¿ ?","6 C"],["F6P","fructosa-6-P"],["¿ ?","6 C · 2 P"],["RUPTURA","ALDOLASA"],
+["¿ ?","3 C"],["¿ ?","3 C"],["1,3-BPG","3 C · 2×"],["¿ ?","3 C · 2×"],["¿ ?","3 C · 2×"],["¿ ?","3 C · 2×"],["PIRUVATO 1","3 C"],
+["¿ ?","3 C"],["¿ ?","3 C · 2×"],["¿ ?","3 C · 2×"],["¿ ?","3 C · 2×"],["¿ ?","3 C · 2×"],["PIRUVATO 2","3 C"]
+];
+
+const pos=[[380,82],[380,145],[380,208],[380,271],[380,330],[210,455],[210,535],[210,615],[210,695],[210,775],[210,835],[210,895],[550,455],[550,535],[550,615],[550,695],[550,775],[550,855]];
+const baseEnzymes=[["Aldolasa",475,330]];
+let placedCards=new Map();
+
+let state={name:"",q:0,correct:0,bonus:0,pearls:0,start:0,timer:null,atp:0,nadh:0,selected:null,cardDone:new Set()};
+const $=id=>document.getElementById(id);
+const fmt=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+
+function draw(){
+  const g=$("nodes");g.innerHTML="";
+  labels.forEach((a,i)=>{
+    let [x,y]=pos[i],group=document.createElementNS("http://www.w3.org/2000/svg","g");
+    group.setAttribute("class","node "+(i<state.pearls?"done ":"")+(i===state.pearls?"current ":"")+(i===4||i>=11?"meta":""));
+    
+    let c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c.setAttribute("class","pearl");
+    c.setAttribute("cx",x);c.setAttribute("cy",y);
+    c.setAttribute("r",(i===4||i>=11)?32:27);
+    group.appendChild(c);
+    
+    let displayText = placedCards.has("node_"+i) ? placedCards.get("node_"+i) : a[0];
+    let t=document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("x",x);t.setAttribute("y",y-5);
+    t.textContent=displayText;
+    group.appendChild(t);
+    
+    let s=document.createElementNS("http://www.w3.org/2000/svg","text");
+    s.setAttribute("class","small");
+    s.setAttribute("x",x);s.setAttribute("y",y+12);
+    s.textContent=a[1];
+    group.appendChild(s);
+    
+    group.addEventListener("click",()=>{
+      if(state.selected!==null) place(state.selected,i);
+    });
+    g.appendChild(group);
+  });
+
+  const eg=$("enzymes");eg.innerHTML="";
+  baseEnzymes.forEach(e=>{
+    let t=document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("class","enzyme");
+    t.setAttribute("x",e[1]);t.setAttribute("y",e[2]);
+    t.textContent=e[0];
+    eg.appendChild(t);
+  });
+  
+  placedCards.forEach((val, key)=>{
+    if(key.startsWith("enz_")){
+      let [, name, x, y] = val.split("|");
+      let t=document.createElementNS("http://www.w3.org/2000/svg","text");
+      t.setAttribute("class","enzyme");
+      t.setAttribute("x",x);t.setAttribute("y",y);
+      t.textContent=name;
+      eg.appendChild(t);
+    }
+  });
+
+  const tk=$("token");tk.innerHTML="";
+  let idx=Math.min(state.pearls,17),[x,y]=pos[idx];
+  let c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+  c.setAttribute("class","token");
+  c.setAttribute("cx",x);c.setAttribute("cy",y-43);
+  c.setAttribute("r",12);
+  tk.appendChild(c);
+  
+  let t=document.createElementNS("http://www.w3.org/2000/svg","text");
+  t.setAttribute("class","tokenText");
+  t.setAttribute("x",x);t.setAttribute("y",y-43);
+  t.textContent="TÚ";
+  tk.appendChild(t);
+
+  $("qNum").textContent=state.q+1;
+}
+
+function stats(){
+  $("pearls").textContent=state.pearls;
+  $('atp').textContent=state.atp;
+  $('nadh').textContent=state.nadh;
+}
+
+function renderQ(){
+  if(state.q>=qs.length){
+    $("question").textContent="¡Has respondido todas las preguntas de la travesía!";
+    $("choices").innerHTML="";
+    $("nextQBtn").style.display="none";
+    return;
+  }
+  $("qCount").textContent="Pregunta "+(state.q+1)+" de "+qs.length;
+  $("question").textContent=qs[state.q][0];
+  let box=$("choices");box.innerHTML="";
+  qs[state.q][1].forEach((c,i)=>{
+    let b=document.createElement("button");
+    b.className="choice";b.type="button";b.textContent=c;
+    b.addEventListener("click",()=>answer(i,b));
+    box.appendChild(b);
+  });
+  $("feedback").textContent="";
+  $("bonusAlert").style.display="none";
+  $("nextQBtn").style.display="none";
+}
+
+function answer(i,b){
+  [...document.querySelectorAll(".choice")].forEach(x=>x.disabled=true);
+  let ok=i===qs[state.q][2];
+  b.classList.add(ok?"ok":"no");
+  
+  if(ok){
+    state.correct++;
+    state.pearls=Math.min(18,state.pearls+1);
+    $("feedback").textContent="✓ ¡Correcto! Tu avatar avanza 1 perla.";
+    
+    // SISTEMA DE BONOS ALEATORIOS (30% de probabilidad al acertar)
+    if(Math.random()<0.30){
+      state.bonus++;
+      let bonusTypes = [
+        {txt:"🎁 ¡BONO SORPRESA! +1 Perla Extra", action:()=>{state.pearls=Math.min(18,state.pearls+1)}},
+        {txt:"⚡ ¡BONO ENERGÉTICO! Recarga metabólica", action:()=>{state.atp+=1}}
+      ];
+      let b = bonusTypes[Math.floor(Math.random()*bonusTypes.length)];
+      b.action();
+      $("bonusAlert").textContent=b.txt;
+      $("bonusAlert").style.display="block";
+    }
+
+    if(state.q===8)state.atp=Math.max(state.atp,4);
+    if(state.q===9)state.atp=2;
+    if(state.q===6)state.nadh=1;
+    if(state.q===10||state.q===14)state.nadh=2;
+    stats();
+    draw();
+  } else {
+    $("feedback").textContent="✗ Incorrecto. Continuas avanzando para aprender la vía.";
+    state.pearls=Math.min(18,state.pearls+1);
+    stats();
+    draw();
+  }
+  state.q++;
+  $("nextQBtn").style.display="block";
+}
+
+$("nextQBtn").addEventListener("click",renderQ);
+
+function renderCards(){
+  let box=$("cards");box.innerHTML="";
+  cards.forEach((c,i)=>{
+    let b=document.createElement("button");
+    b.type="button";
+    b.className="cardBtn"+(state.selected===i?" selected":"");
+    b.disabled=state.cardDone.has(i);
+    b.innerHTML="<strong>"+c[0]+" · "+c[1]+"</strong><span>"+c[2]+"</span>";
+    b.addEventListener("click",()=>{
+      state.selected=i;
+      renderCards();
+    });
+    box.appendChild(b);
+  });
+}
+
+function place(ci,ni){
+  if(state.selected===null)return;
+  let card = cards[ci];
+  let correct=card[3].includes(ni);
+  
+  if(correct){
+    state.cardDone.add(ci);
+    state.selected=null;
+    state.bonus++;
+    state.pearls=Math.min(18,state.pearls+1);
+    
+    if(card[1]==="Molécula"){
+      placedCards.set("node_"+ni, card[0]);
+    } else {
+      let [x,y] = pos[ni];
+      placedCards.set("enz_"+ci, "enz|"+card[0]+"|"+(x>380? x+35 : x-90)+"|"+(y));
+    }
+    
+    alert("🧬 ¡Tarjeta colocada correctamente! Revelado: "+card[0]);
+    renderCards(); draw(); stats();
+    if(state.pearls>=18 || state.cardDone.size===cards.length) $("finishBtn").style.display="block";
+  } else {
+    alert("Esa tarjeta no corresponde a esa estación. Revisa e inténtalo de nuevo.");
+  }
+}
+
+function start(){
+  let n=$("name").value.trim();
+  if(!n){$("name").focus();return;}
+  state.name=n;
+  state.start=Date.now();
+  $("start").style.display="none";
+  $("game").style.display="block";
+  $("student").textContent="Jugador: "+n;
+  draw();
+  renderQ();
+  renderCards();
+  stats();
+  state.timer=setInterval(()=>$("time").textContent=fmt(Math.floor((Date.now()-state.start)/1000)),1000);
+}
+
+function finish(){
+  if($("final").style.display==="block")return;
+  clearInterval(state.timer);
+  $("game").style.display="none";
+  $("final").style.display="block";
+  let sec=Math.floor((Date.now()-state.start)/1000);
+  $("finalStudent").textContent="Jugador: "+state.name;
+  $("finalTime").textContent=fmt(sec);
+  $("finalPearls").textContent=state.pearls;
+  $("finalCorrect").textContent=state.correct;
+  $("finalBonus").textContent=state.bonus;
+}
+
+$("startBtn").addEventListener("click",start);
+$("name").addEventListener("keydown",e=>{if(e.key==="Enter")start()});
+$("restart").addEventListener("click",()=>location.reload());
+$("finishBtn").addEventListener("click",finish);
+</script>
+</body>
+</html>
